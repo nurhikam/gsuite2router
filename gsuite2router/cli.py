@@ -18,8 +18,20 @@ from .config import (
 )
 from .accounts import read_accounts, remove_account
 from .router_api import RouterAPI
-from .google_auth import google_login, kill_zombie_browsers
+from .google_auth import google_login, kill_zombie_browsers, clean_exception
 from .delete import run_delete
+
+
+def format_duration(seconds):
+    """Format seconds into readable string."""
+    seconds = int(seconds)
+    if seconds < 60:
+        return f"{seconds}s"
+    m, s = divmod(seconds, 60)
+    if m < 60:
+        return f"{m}m {s}s"
+    h, m = divmod(m, 60)
+    return f"{h}h {m}m {s}s"
 
 
 def print_banner():
@@ -91,51 +103,63 @@ def cmd_add(args):
 
     success = 0
     fail = 0
+    start_time = time.time()
 
-    for i, account in enumerate(accounts):
-        email = account["email"]
-        password = account["password"]
+    try:
+        for i, account in enumerate(accounts):
+            email = account["email"]
+            password = account["password"]
+            acc_start = time.time()
 
-        print(f"\n{'=' * 55}")
-        print(f" [{i + 1}/{len(accounts)}] {email}")
-        print(f"{'=' * 55}")
-
-        try:
-            print("  [API] OAuth authorize...")
-            oauth = api.start_oauth(redirect_uri)
-
-            auth_code = google_login(
-                oauth["authUrl"], email, password, timing, redirect_uri,
-            )
-
-            print("  [API] Exchange token...")
-            result = api.exchange_token(
-                redirect_uri, auth_code,
-                oauth["codeVerifier"], oauth["state"],
-            )
-
-            conn_id = result.get("connection", {}).get("id", "OK")
-            print(f"\n  [OK] {email} — {conn_id}")
-            success += 1
+            print(f"\n{'=' * 55}")
+            print(f" [{i + 1}/{len(accounts)}] {email}")
+            print(f"{'=' * 55}")
 
             try:
-                remove_account(akun_file, account["raw"])
-            except Exception:
-                print(f"  [WARN] Failed to remove from account file (permission?)")
+                print("  [API] OAuth authorize...")
+                oauth = api.start_oauth(redirect_uri)
 
-        except Exception as e:
-            print(f"\n  [FAIL] {email}: {e}")
-            fail += 1
+                auth_code = google_login(
+                    oauth["authUrl"], email, password, timing, redirect_uri,
+                )
 
-        if i < len(accounts) - 1:
-            print(f"\n  [DELAY] Waiting {args.delay}s...")
-            time.sleep(args.delay)
+                print("  [API] Exchange token...")
+                result = api.exchange_token(
+                    redirect_uri, auth_code,
+                    oauth["codeVerifier"], oauth["state"],
+                )
 
+                conn_id = result.get("connection", {}).get("id", "OK")
+                acc_elapsed = f"{time.time() - acc_start:.1f}s"
+                print(f"\n  [OK] {email} — {conn_id} ({acc_elapsed})")
+                success += 1
+
+                try:
+                    remove_account(akun_file, account["raw"])
+                except Exception:
+                    print(f"  [WARN] Failed to remove from account file (permission?)")
+
+            except KeyboardInterrupt:
+                raise
+            except Exception as e:
+                acc_elapsed = f"{time.time() - acc_start:.1f}s"
+                print(f"\n  [FAIL] {email}: {clean_exception(e)} ({acc_elapsed})")
+                fail += 1
+
+            if i < len(accounts) - 1:
+                print(f"\n  [DELAY] Waiting {args.delay}s...")
+                time.sleep(args.delay)
+
+    except KeyboardInterrupt:
+        print(f"\n\n [INTERRUPTED] Stopped by user (Ctrl+C)")
+
+    total_elapsed = format_duration(time.time() - start_time)
     print(f"\n{'=' * 55}")
     print(f" DONE!")
-    print(f" Total  : {len(accounts)} accounts")
-    print(f" Success: {success} accounts")
-    print(f" Failed : {fail} accounts")
+    print(f" Total   : {len(accounts)} accounts")
+    print(f" Success : {success} accounts")
+    print(f" Failed  : {fail} accounts")
+    print(f" Duration: {total_elapsed}")
     print(f"{'=' * 55}")
 
 

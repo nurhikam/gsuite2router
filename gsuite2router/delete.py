@@ -1,5 +1,6 @@
 """Delete exhausted/quota-exceeded Antigravity connections from 9Router."""
 
+import time
 from .router_api import RouterAPI
 
 
@@ -72,6 +73,7 @@ def run_delete(api, dry_run=False):
         api: RouterAPI instance (already logged in)
         dry_run: If True, scan only without deleting
     """
+    t0 = time.time()
     connections = api.get_providers()
     print(f"Total connections: {len(connections)}\n")
 
@@ -162,6 +164,7 @@ def run_delete(api, dry_run=False):
             new_status = "active" if valid else status
             print(f"  [~] {name} — status: {new_status}")
 
+    elapsed = f"{time.time() - t0:.1f}s"
     print(f"\n{'=' * 40}")
-    print(f"Done! Deleted: {deleted} | Failed: {failed} | Reset: {len(to_keep)}")
+    print(f"Done! Deleted: {deleted} | Failed: {failed} | Reset: {len(to_keep)} | Time: {elapsed}")
     print(f"{'=' * 40}")
