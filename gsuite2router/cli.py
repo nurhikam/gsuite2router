@@ -103,6 +103,8 @@ def cmd_add(args):
 
     success = 0
     fail = 0
+    success_list = []
+    fail_list = []
     start_time = time.time()
 
     try:
@@ -133,6 +135,7 @@ def cmd_add(args):
                 acc_elapsed = f"{time.time() - acc_start:.1f}s"
                 print(f"\n  [OK] {email} — {conn_id} ({acc_elapsed})")
                 success += 1
+                success_list.append(email)
 
                 try:
                     remove_account(akun_file, account["raw"])
@@ -143,8 +146,10 @@ def cmd_add(args):
                 raise
             except Exception as e:
                 acc_elapsed = f"{time.time() - acc_start:.1f}s"
-                print(f"\n  [FAIL] {email}: {clean_exception(e)} ({acc_elapsed})")
+                reason = clean_exception(e)
+                print(f"\n  [FAIL] {email}: {reason} ({acc_elapsed})")
                 fail += 1
+                fail_list.append((email, reason))
 
             if i < len(accounts) - 1:
                 print(f"\n  [DELAY] Waiting {args.delay}s...")
@@ -161,6 +166,24 @@ def cmd_add(args):
     print(f" Failed  : {fail} accounts")
     print(f" Duration: {total_elapsed}")
     print(f"{'=' * 55}")
+
+    if success_list:
+        print(f"\n Success ({len(success_list)}):")
+        for idx, em in enumerate(success_list, 1):
+            print(f"  {idx}. {em} — OK")
+
+    if fail_list:
+        print(f"\n Failed ({len(fail_list)}):")
+        for idx, (em, reason) in enumerate(fail_list, 1):
+            print(f"  {idx}. {em} — {reason}")
+
+    if not success_list and not fail_list:
+        print("\n (no accounts processed)")
+
+    # also hint remaining in file
+    if fail_list:
+        print(f"\n [INFO] {len(fail_list)} failed account(s) remain in {akun_file} for retry.")
+        print(f"        Re-run: gsuite2router add --file {akun_file}")
 
 
 def cmd_delete(args):
