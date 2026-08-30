@@ -27,6 +27,12 @@ except ImportError:
     _USE_PLAYWRIGHT = False
     _google_login = google_login
 from .delete import run_delete
+try:
+    from .claude_wizard import run_claude_wizard
+    _HAS_CLAUDE_WIZARD = True
+except ImportError:
+    _HAS_CLAUDE_WIZARD = False
+    run_claude_wizard = None
 
 
 def format_duration(seconds):
@@ -193,6 +199,24 @@ def cmd_add(args):
         print(f"        Re-run: gsuite2router add --file {akun_file}")
 
 
+def cmd_claude(args):
+    """Add Claude.ai accounts via headed wizard."""
+    print_banner()
+    if not _HAS_CLAUDE_WIZARD:
+        print(" [ERROR] Claude wizard not available (missing playwright).")
+        print("         pip install playwright && playwright install chromium")
+        sys.exit(1)
+    akun_file = args.file or os.path.join(os.getcwd(), "akun.txt")
+    if not os.path.isabs(akun_file):
+        akun_file = os.path.abspath(akun_file)
+    run_claude_wizard(
+        akun_file=akun_file,
+        delay=args.delay,
+        url=args.url,
+        password=args.password,
+    )
+
+
 def cmd_delete(args):
     """Delete exhausted Antigravity connections from 9Router."""
     print_banner()
@@ -236,6 +260,13 @@ def main():
     p_add.add_argument("--delay", type=int, default=DEFAULT_DELAY, help=f"Delay between accounts in seconds (default: {DEFAULT_DELAY})")
     p_add.add_argument("--redirect-uri", default=DEFAULT_REDIRECT_URI, help=f"OAuth redirect URI (default: {DEFAULT_REDIRECT_URI})")
 
+    # --- claude subcommand ---
+    p_claude = sub.add_parser("claude", help="Add Claude.ai accounts via headed wizard (manual captcha)")
+    p_claude.add_argument("--url", default=None, help="9Router URL (overrides config)")
+    p_claude.add_argument("--password", default=None, help="9Router password (overrides config)")
+    p_claude.add_argument("--file", default=None, help="Path to account file (default: akun.txt in CWD)")
+    p_claude.add_argument("--delay", type=int, default=60, help="Delay between accounts in seconds (default: 60)")
+
     # --- delete subcommand ---
     p_del = sub.add_parser("delete", help="Delete exhausted connections from Antigravity")
     p_del.add_argument("--url", default=None, help="9Router URL (overrides config)")
@@ -248,6 +279,8 @@ def main():
         cmd_init(args)
     elif args.command == "add":
         cmd_add(args)
+    elif args.command == "claude":
+        cmd_claude(args)
     elif args.command == "delete":
         cmd_delete(args)
     else:
