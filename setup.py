@@ -7,6 +7,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         "DrissionPage>=4.0",
+        "playwright>=1.40",
     ],
     python_requires=">=3.8",
     entry_points={

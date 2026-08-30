@@ -11,6 +11,8 @@ build/
 # Config & credentials
 .gs2router.json
 akun.txt
+akun_*.txt
+akun*.txt
 
 # OS files
 .DS_Store

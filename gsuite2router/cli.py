@@ -18,7 +18,14 @@ from .config import (
 )
 from .accounts import read_accounts, remove_account
 from .router_api import RouterAPI
-from .google_auth import google_login, kill_zombie_browsers, clean_exception
+try:
+    from .google_auth_playwright import google_login_playwright, kill_zombie_browsers, clean_exception
+    _USE_PLAYWRIGHT = True
+    _google_login = google_login_playwright
+except ImportError:
+    from .google_auth import google_login, kill_zombie_browsers, clean_exception
+    _USE_PLAYWRIGHT = False
+    _google_login = google_login
 from .delete import run_delete
 
 
@@ -121,7 +128,7 @@ def cmd_add(args):
                 print("  [API] OAuth authorize...")
                 oauth = api.start_oauth(redirect_uri)
 
-                auth_code = google_login(
+                auth_code = _google_login(
                     oauth["authUrl"], email, password, timing, redirect_uri,
                 )
 
