@@ -31,8 +31,13 @@ try:
     from .claude_wizard import run_claude_wizard
     _HAS_CLAUDE_WIZARD = True
 except ImportError:
-    _HAS_CLAUDE_WIZARD = False
-    run_claude_wizard = None
+    try:
+        from archive.claude_wizard import run_claude_wizard  # type: ignore
+
+        _HAS_CLAUDE_WIZARD = True
+    except ImportError:
+        _HAS_CLAUDE_WIZARD = False
+        run_claude_wizard = None
 
 
 def format_duration(seconds):
